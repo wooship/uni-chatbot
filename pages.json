@@ -1,0 +1,16 @@
+{
+	"pages": [
+		{
+		    "path": "pages/index/index",
+		    "style": {
+		    	
+		    }
+		}
+    ],
+	"globalStyle": {
+		"navigationBarTextStyle": "white",
+		"navigationBarTitleText": "chatgpt-proxy移动端demo",
+		"navigationBarBackgroundColor": "#42b983",
+		"backgroundColor": "#f3f3f3"
+	}
+}
