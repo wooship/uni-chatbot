@@ -125,12 +125,6 @@
 							"pic": "/static/logo.png" // 头像
 						})
 					}
-					arr.push({
-						"id": new Date().getTime(), // 消息的ID
-						"content": `因服务器资源限制，问题回答可能存在延迟（30s-1min），请耐心等待...`,
-						"type": 0,
-						"pic": "/static/logo.png" // 头像
-					})
 					/*
 						颠倒数组中元素的顺序。将最新的数据排在本次接口返回数据的最后面。
 						后端接口按 消息的时间降序查找出当前页的数据后，再将本页数据按消息时间降序排序返回。
@@ -224,7 +218,7 @@
 								.catch(res => {
 									console.log(res);
 								})
-						},3000);
+						},5000);
 					})
 					.catch(res => {
 						console.log(res);
