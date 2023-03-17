@@ -4,6 +4,8 @@
 # chatgpt-proxy
 第三方chatgpt代理（无需FQ、不用注册chatgpt账号、使用与网页版相同版本的模型、API简单）仅供学习参考：[http://wxwxwxwx.top:3333/api-docs/](http://wxwxwxwx.top:3333/api-docs/)
 
+## Version: 1.0.0
+
 ### /askquestion
 
 #### GET
@@ -22,6 +24,8 @@ send your question to chatgpt-proxy
 | Code | Description |
 | ---- | ----------- |
 | 200 | OK |
+| 400 | Bad Request |
+| 500 | Internal Server Error |
 
 ### /getanswer
 
@@ -41,3 +45,47 @@ get answer from chatgpt-proxy
 | Code | Description |
 | ---- | ----------- |
 | 200 | OK |
+| 400 | Bad Request |
+| 500 | Internal Server Error |
+
+### /postquestion
+
+#### POST
+##### Summary
+
+send your question to chatgpt-proxy by using post method
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| body | body |  | Yes | { **"q"**: string } |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | OK |
+| 400 | Bad Request |
+| 500 | Internal Server Error |
+
+### /postanswer
+
+#### POST
+##### Summary
+
+get answer from chatgpt-proxy by using post method
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| body | body |  | Yes | { **"q"**: string } |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | OK |
+| 400 | Bad Request |
+| 500 | Internal Server Error |
