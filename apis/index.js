@@ -1,9 +1,9 @@
-const BASE_URL = "http://wxwxwxwx.top:3333/api"
+const BASE_URL = "https://chat.wxwxwxwx.top/api"
 
 /**
  * 封装get请求
  */
-export const getParamsRequest = (url, params, showLoading) => (
+export const getParamsRequest = (url, params, showLoading, method) => (
 	new Promise((resolve, reject) => {
 		if (showLoading) {
 			uni.showLoading({
@@ -12,7 +12,7 @@ export const getParamsRequest = (url, params, showLoading) => (
 		}
 		uni.request({
 			url: `${BASE_URL}${url}`,
-			method: "GET",
+			method: method,
 			data: params,
 			header: {
 				"content-type": "application/json"
@@ -40,10 +40,10 @@ export const getParamsRequest = (url, params, showLoading) => (
 /**
  * 超时
  */
-export const getTimeOut = () => (
+export const getTimeOut = (ms) => (
 	new Promise((resolve, reject) =>{
 		setTimeout(()=> {
 			reject('请求超时');
-		}, 50);
+		}, ms);
 	})
 )

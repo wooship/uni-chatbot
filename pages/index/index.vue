@@ -8,16 +8,17 @@
 				<view v-for="(item,index) in talkList" :key="index" :id="`msg-${item.id}`">
 					<view class="item flex_col" :class=" item.type == 1 ? 'push':'pull' ">
 						<image :src="item.pic" mode="aspectFill" class="pic"></image>
-						<view class="content">{{item.content}}</view>
+						<view class="content"><text user-select>{{item.content}}</text></view>
 					</view>
 				</view>
 			</view>
 		</view>
-		<view class="box-2">
+		<view class="box-2" :style="{ bottom: bottom }">
 			<view class="flex_col">
 				<view class="flex_grow">
-					<input type="text" class="content" v-model="content" placeholder="请输入你的问题"
-						placeholder-style="color:#DDD;" :cursor-spacing="6">
+					<input type=" text" class="content" v-model="content" confirm-type="send" @confirm="send"
+						placeholder="请输入你的问题" :adjust-position="false" placeholder-style="color:#DDD;"
+						cursor-spacing="155rpx" always-embed="true" @blur="blur_input">
 				</view>
 				<button class="send" @tap="send">发送</button>
 			</view>
@@ -39,15 +40,38 @@
 					page: 1, //页码
 					flag: true, // 请求开关
 					loading: true, // 加载中
-					loadText: '正在获取消息'
+					loadText: '正在获取信息'
 				},
-				content: ''
+				content: '',
+				bottom: '',
+				canClick: true
 			}
 		},
+		onPageScroll() {
+			uni.hideKeyboard()
+		},
+		onLoad() {
+			uni.onKeyboardHeightChange((res) => { //监听键盘高度变化
+				const res_keyboard = uni.getSystemInfoSync();
+				console.log(res.height)
+				console.log(res_keyboard.screenHeight)
+				console.log(res_keyboard.windowHeight)
+				console.log(res_keyboard.safeAreaInsets.bottom)
+				let key_height = res.height - res_keyboard.safeAreaInsets.bottom
+				this.bottom = `${ key_height>0 ? key_height : 0}px`;
+				console.log(this.bottom)
+			})
+		},
+		// onHide() {
+		// 	uni.offKeyboardHeightChange(); //取消监听键盘高度变化事件，避免内存消耗
+		// },
 		mounted() {
 			this.$nextTick(() => {
 				this.getHistoryMsg();
 			});
+			/*  #ifdef  MP-WEIXIN  */
+			wx.cloud.init()
+			/*  #endif  */
 		},
 		/* onPageScroll(e) {
 			if (e.scrollTop < 5) {
@@ -157,44 +181,132 @@
 			// 隐藏加载提示
 			hideLoadTips(flag) {
 				if (flag) {
-					this.ajax.loadText = '消息获取成功';
+					this.ajax.loadText = '连接成功';
 					setTimeout(() => {
 						this.ajax.loading = false;
 					}, 300);
 				} else {
 					this.ajax.loading = true;
-					this.ajax.loadText = '正在获取消息';
+					this.ajax.loadText = '初始化连接';
 				}
 			},
 			// 发送信息
 			send() {
-				if (!this.content) {
+				if (!this.canClick) {
+					console.log(this.canClick)
+					return
+				}
+				if (this.content.trim() === '') {
 					uni.showToast({
 						title: '请输入有效的内容',
 						icon: 'none'
 					})
 					return;
 				}
-				
-				let question = this.content;
+				this.canClick = false
+
+				let question = '本次会话的聊天记录如下：\n{\n'
+				for (let i = 0; i < this.talkList.length; i++) {
+					if (this.talkList[i].type === 0) {
+						question += '你：' + this.talkList[i].content + '\n'
+					} else {
+						question += '我：' + this.talkList[i].content + '\n'
+					}
+				}
+				question += '}\n现在我的问题是：\n'
+				question += this.content.trim() + '\n';
+				question += '你的回答字数必须控制在200个字以内'
+				console.log(question)
 
 				// uni.showLoading({
 				// 	title: '正在发送'
 				// })
-				getParamsRequest("/askquestion", {
-						q: question
-					}, true)
+				/*  #ifdef  MP-WEIXIN  */
+				wx.cloud.callFunction({ //调用云服务
+						name: "askquestion", //云函数名称
+						data: {
+							q: question, //云函数需要的参数
+						},
+					})
 					.then(res => {
 						console.log(res);
 						let intervalID = setInterval(() => {
-							getParamsRequest("/getanswer", {
-									q: question
-								}, false)
+							Promise.race([getTimeOut(4000), wx.cloud.callFunction({ //调用云服务
+									name: "getanswer", //云函数名称
+									data: {
+										q: question, //云函数需要的参数
+									},
+								})
 								.then(res => {
 									console.log(res);
-									if(res == 'no answer yet'){
+									if (res.result == 'no answer yet') {
 										// console.log('awaiting answer ...')
-									}else{
+									} else {
+										let data = {
+											"id": new Date().getTime(),
+											"content": res.result,
+											"type": 0,
+											"pic": "/static/logo.png"
+										}
+										this.talkList.push(data);
+
+										this.$nextTick(() => {
+											if (this.bottom === '0px') {
+												uni.pageScrollTo({
+													scrollTop: 999999, // 设置一个超大值，以保证滚动条滚动到底部
+													duration: 0
+												});
+											}
+										})
+
+										clearInterval(intervalID);
+									}
+								})
+								.catch(err => {
+									console.log('失败', res)
+								})
+							])
+						}, 5000);
+					})
+					.catch(err => {
+						setTimeout(() => {
+							// uni.hideLoading();
+
+							// 将当前发送信息 添加到消息列表。
+							let data = {
+								"id": new Date().getTime(),
+								"content": '问题发送失败，请稍后重试',
+								"type": 0,
+								"pic": "/static/logo.png"
+							}
+							this.talkList.push(data);
+
+							this.$nextTick(() => {
+								if (this.bottom === '0px') {
+									uni.pageScrollTo({
+										scrollTop: 999999, // 设置一个超大值，以保证滚动条滚动到底部
+										duration: 0
+									});
+								}
+							})
+						}, 1000);
+					})
+				/*  #endif  */
+				/*  #ifndef  MP-WEIXIN  */
+				getParamsRequest("/postquestion", {
+						q: question
+					}, true, "POST")
+					.then(res => {
+						console.log(res);
+						let intervalID = setInterval(() => {
+							Promise.race([getTimeOut(4000), getParamsRequest("/postanswer", {
+									q: question
+								}, false, "POST")
+								.then(res => {
+									console.log(res);
+									if (res == 'no answer yet') {
+										// console.log('awaiting answer ...')
+									} else {
 										let data = {
 											"id": new Date().getTime(),
 											"content": res,
@@ -202,28 +314,50 @@
 											"pic": "/static/logo.png"
 										}
 										this.talkList.push(data);
-										
+
 										this.$nextTick(() => {
-											// 清空内容框中的内容
-											this.content = '';
-											uni.pageScrollTo({
-												scrollTop: 999999, // 设置一个超大值，以保证滚动条滚动到底部
-												duration: 0
-											});
+											// console.log(this.bottom)
+											if (this.bottom === '0px') {
+												uni.pageScrollTo({
+													scrollTop: 999999, // 设置一个超大值，以保证滚动条滚动到底部
+													duration: 0
+												});
+											}
 										})
-										
+
 										clearInterval(intervalID);
 									}
 								})
-								.catch(res => {
-									console.log(res);
+								.catch(err => {
+									console.log(err);
 								})
-						},5000);
+							])
+						}, 5000);
 					})
-					.catch(res => {
-						console.log(res);
+					.catch(err => {
+						setTimeout(() => {
+							// uni.hideLoading();
+
+							// 将当前发送信息 添加到消息列表。
+							let data = {
+								"id": new Date().getTime(),
+								"content": '问题发送失败，请稍后重试',
+								"type": 0,
+								"pic": "/static/logo.png"
+							}
+							this.talkList.push(data);
+
+							this.$nextTick(() => {
+								if (this.bottom === '0px') {
+									uni.pageScrollTo({
+										scrollTop: 999999, // 设置一个超大值，以保证滚动条滚动到底部
+										duration: 0
+									});
+								}
+							})
+						}, 1000);
 					})
-				
+				/*  #endif  */
 				setTimeout(() => {
 					// uni.hideLoading();
 
@@ -232,19 +366,29 @@
 						"id": new Date().getTime(),
 						"content": this.content,
 						"type": 1,
-						"pic": "/static/logo.png"
+						"pic": "/static/question.png"
 					}
 					this.talkList.push(data);
 
 					this.$nextTick(() => {
 						// 清空内容框中的内容
 						this.content = '';
+						this.canClick = true
 						uni.pageScrollTo({
 							scrollTop: 999999, // 设置一个超大值，以保证滚动条滚动到底部
 							duration: 0
 						});
 					})
-				}, 1000);
+				}, 100);
+			},
+			//input失去焦点时滚到底，为了解决虚拟键盘收回时滚动条位置不对的问题
+			blur_input() {
+				setTimeout(() => {
+					uni.pageScrollTo({
+						scrollTop: 999999, // 设置一个超大值，以保证滚动条滚动到底部
+						duration: 0
+					});
+				}, 200);
 			}
 		}
 	}
@@ -258,6 +402,11 @@
 		font-size: 28rpx;
 		//兼容iphone X ios 12.4
 		padding-bottom: env(safe-area-inset-bottom);
+	}
+
+	text {
+		//设置文字可选择复制
+		-webkit-user-select: text;
 	}
 
 	/* 加载数据提示 */
@@ -315,22 +464,22 @@
 			background-color: #fff;
 			height: 64rpx;
 			padding: 0 20rpx;
-			border-radius: 32rpx;
+			border-radius: 10rpx;
 			font-size: 28rpx;
 		}
 
 		.send {
-			background-color: #42b983;
+			background-color: #448cb6;
 			color: #fff;
 			height: 64rpx;
 			margin-left: 20rpx;
-			border-radius: 32rpx;
+			border-radius: 10rpx;
 			padding: 0;
 			width: 120rpx;
 			line-height: 62rpx;
 
 			&:active {
-				background-color: #5fc496;
+				background-color: #316684;
 			}
 		}
 	}

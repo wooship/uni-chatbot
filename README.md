@@ -2,7 +2,7 @@
 一个简单的移动端chatgpt聊天工具demo，基于uniapp实现，参考借鉴了helang大佬的即时通讯聊天插件项目：[https://ext.dcloud.net.cn/plugin?id=1376#rating](https://ext.dcloud.net.cn/plugin?id=1376#rating)
 # ![图例](screenshot.jpg)
 # chatgpt-proxy
-第三方chatgpt代理（无需FQ、不用注册chatgpt账号、使用与网页版相同版本的模型、API简单）仅供学习参考：[http://wxwxwxwx.top:3333/api-docs/](http://wxwxwxwx.top:3333/api-docs/)
+第三方chatgpt代理（无需FQ、不用注册chatgpt账号、使用与网页版相同版本的模型、API简单）仅供学习参考：[https://chat.wxwxwxwx.top/api-docs/](https://chat.wxwxwxwx.top/api-docs/)
 
 ## Version: 1.0.0
 

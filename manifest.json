@@ -21,7 +21,8 @@
             /* android打包配置 */
             "android" : {
                 "permissions" : [],
-                "autoSdkPermissions" : false
+                "autoSdkPermissions" : false,
+                "abiFilters" : [ "armeabi-v7a", "arm64-v8a", "x86" ]
             },
             /* ios打包配置 */
             "ios" : {
@@ -69,7 +70,8 @@
     "quickapp" : {},
     /* 小程序特有相关 */
     "mp-weixin" : {
-        "appid" : "",
+        "appid" : "wxfe1277a7081e4eb3",
+        "cloudfunctionRoot" : "./functions/",
         "setting" : {
             "urlCheck" : false,
             "es6" : true

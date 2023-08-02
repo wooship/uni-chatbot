@@ -9,8 +9,8 @@
     ],
 	"globalStyle": {
 		"navigationBarTextStyle": "white",
-		"navigationBarTitleText": "chatgpt-proxy移动端demo",
-		"navigationBarBackgroundColor": "#42b983",
+		"navigationBarTitleText": "chatgpt-proxy-test",
+		"navigationBarBackgroundColor": "#448cb6",
 		"backgroundColor": "#f3f3f3"
 	}
 }

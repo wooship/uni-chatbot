@@ -1,0 +1,12 @@
+{
+	"name": "askquestion",
+	"version": "1.0.0",
+	"description": "",
+	"main": "index.js",
+	"author": "",
+	"license": "ISC",
+	"dependencies": {
+		"got": "^11.8.6",
+		"querystring": "^0.2.1"
+	}
+}
