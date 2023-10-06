@@ -205,18 +205,19 @@
 				}
 				this.canClick = false
 
-				let question = '本次会话的聊天记录如下：\n{\n'
-				for (let i = 0; i < this.talkList.length; i++) {
-					if (this.talkList[i].type === 0) {
-						question += '你：' + this.talkList[i].content + '\n'
-					} else {
-						question += '我：' + this.talkList[i].content + '\n'
-					}
-				}
-				question += '}\n现在我的问题是：\n'
-				question += this.content.trim() + '\n';
-				question += '你的回答字数必须控制在200个字以内'
-				console.log(question)
+				// let question = '本次会话你我的聊天记录如下：\n{\n'
+				// for (let i = 0; i < this.talkList.length; i++) {
+				// 	if (this.talkList[i].type === 0) {
+				// 		question += '你：' + this.talkList[i].content + '\n'
+				// 	} else {
+				// 		question += '我：' + this.talkList[i].content + '\n'
+				// 	}
+				// }
+				// question += '}\n现在我的问题是：\n'
+				// question += this.content.trim() + '\n';
+				// console.log(question)
+				
+				let question = this.content.trim()
 
 				// uni.showLoading({
 				// 	title: '正在发送'
@@ -295,7 +296,7 @@
 				/*  #ifndef  MP-WEIXIN  */
 				getParamsRequest("/postquestion", {
 						q: question
-					}, true, "POST")
+					}, false, "POST")
 					.then(res => {
 						console.log(res);
 						let intervalID = setInterval(() => {
