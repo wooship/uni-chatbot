@@ -1,5 +1,5 @@
 {
-    "name" : "chatgpt-proxy-test",
+    "name" : "uni-chatbot",
     "appid" : "__UNI__B6EE5C5",
     "description" : "",
     "versionName" : "0.0.1",
@@ -86,5 +86,13 @@
     },
     "mp-toutiao" : {
         "usingComponents" : true
+    },
+    "h5" : {
+        "router" : {
+            "mode" : "history"
+        },
+        "devServer" : {
+            "https" : false
+        }
     }
 }

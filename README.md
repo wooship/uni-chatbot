@@ -1,4 +1,4 @@
-# chatgpt-proxy-test
+# uni-chatbot
 一个简单的移动端chatgpt聊天工具demo，基于uniapp实现，参考借鉴了helang大佬的即时通讯聊天插件项目：[https://ext.dcloud.net.cn/plugin?id=1376#rating](https://ext.dcloud.net.cn/plugin?id=1376#rating)
 # ![图例](screenshot.jpg)
 # chatgpt-proxy

@@ -2,11 +2,11 @@
 	export default {
 		onLaunch: function() {
 			// #ifdef H5
-			console.log("%c chatgpt-proxy-test [联系我:xhip82@gmail.com]",'color:#09f;font-size:32px;');
+			console.log("%c uni-chatbot [联系我:xhip82@gmail.com]",'color:#09f;font-size:32px;');
 			// #endif
 			
 			// #ifndef H5
-			console.log("chatgpt-proxy-test [联系我:xhip82@gmail.com]");
+			console.log("uni-chatbot [联系我:xhip82@gmail.com]");
 			// #endif
 		},
 		onShow: function() {
