@@ -22,5 +22,11 @@
 				"query": "" //启动参数，在页面的onLoad函数里面得到
 			}
 		]
-	}
+	},
+	"easycom": {    
+	      "autoscan": true,    
+	      "custom": {    
+	          "^uni-((?!(icons)).*)": "@dcloudio/uni-ui/lib/uni-$1/uni-$1.vue" //这里排除了uni-icons    
+	      }    
+	  }
 }

@@ -20,7 +20,7 @@
             "type" : "uni-app:app-ios"
         },
         {
-            "openVueDevtools" : true,
+            "openVueDevtools" : false,
             "type" : "uni-app:h5"
         }
     ]

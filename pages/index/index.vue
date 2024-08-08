@@ -1,14 +1,21 @@
 <template>
-	<view>
+	<view :style="{ height: sHeight + 'px' }" @touchstart="" @touchmove="touch_move" @touchend="">
 		<view class="tips color_fff size_12 align_c" :class="{ 'show':ajax.loading }" @tap="getHistoryMsg">
 			{{ajax.loadText}}
 		</view>
-		<view class="box-1" id="list-box">
-			<view class="talk-list">
+		<view class="box-1" id="list-box" :style="{ 'padding-bottom': pBottom + 'px' }">
+			<view class="talk-list parent" style="position: relative; ">
+				<l-resize @resize="handleResize"></l-resize>
 				<view v-for="(item,index) in talkList" :key="index" :id="`msg-${item.id}`">
 					<view class="item flex_col" :class=" item.type == 1 ? 'push':'pull' ">
 						<image :src="item.pic" mode="aspectFill" class="pic"></image>
-						<view class="content"><text user-select>{{item.content}}</text></view>
+						<view class="content">
+							<!-- <text user-select>{{item.content}}</text> -->
+							<zero-markdown-view :themeColor="themeColor" :markdown="item.content"></zero-markdown-view>
+							<!-- <typer :content="item.content"></typer> -->
+							<image :src="item.pic_base64" mode="widthFix" @tap="imgPreview(item.pic_base64)"
+								:class=" item.pic_base64 ? 'pic_base64':'pic_base64_none' "></image>
+						</view>
 					</view>
 				</view>
 			</view>
@@ -18,8 +25,11 @@
 				<view class="flex_grow">
 					<input type=" text" class="content" v-model="content" confirm-type="send" @confirm="send"
 						placeholder="请输入你的问题" :adjust-position="false" placeholder-style="color:#DDD;"
-						cursor-spacing="155rpx" always-embed="true" @blur="blur_input">
+						cursor-spacing="155rpx" always-embed="true" @blur="blur_input" @focus="focus_input">
 				</view>
+				<button class="camera" @tap="camera">
+					<uni-icons :type="pic_icon" size="24" />
+				</button>
 				<button class="send" @tap="send">发送</button>
 			</view>
 		</view>
@@ -29,9 +39,18 @@
 <script>
 	import {
 		getParamsRequest,
-		getTimeOut
+		getTimeOut,
+		createCanvas,
+		imgScaleW
 	} from "../../apis/index.js"
+	import {
+		pathToBase64,
+		base64ToPath
+	} from 'image-tools'
 	export default {
+		usingComponents: {
+			'typer': '@/componets/typer/typer.vue'
+		},
 		data() {
 			return {
 				talkList: [],
@@ -44,13 +63,23 @@
 				},
 				content: '',
 				bottom: '',
-				canClick: true
+				sHeight: '',
+				pBottom: '',
+				canClick: true,
+				pic_icon: 'camera',
+				pic_base64: '',
+				themeColor: '#2d85b1'
 			}
 		},
-		onPageScroll() {
-			uni.hideKeyboard()
-		},
+		/*  #ifndef  H5  */
+		// onPageScroll() {
+		// 	uni.hideKeyboard()
+		// },
+		/*  #endif  */
 		onLoad() {
+			this.sHeight = uni.getSystemInfoSync().windowHeight - uni.getSystemInfoSync().safeAreaInsets.bottom
+			// this.pBottom = 50 + uni.getSystemInfoSync().safeAreaInsets.bottom
+			/*  #ifndef  H5  */
 			uni.onKeyboardHeightChange((res) => { //监听键盘高度变化
 				const res_keyboard = uni.getSystemInfoSync();
 				console.log(res.height)
@@ -61,6 +90,7 @@
 				this.bottom = `${ key_height>0 ? key_height : 0}px`;
 				console.log(this.bottom)
 			})
+			/*  #endif  */
 		},
 		// onHide() {
 		// 	uni.offKeyboardHeightChange(); //取消监听键盘高度变化事件，避免内存消耗
@@ -141,9 +171,25 @@
 					let endIndex = startIndex + this.ajax.rows;
 					for (let i = startIndex; i < endIndex; i++) {
 						arr.push({
+							"id": i+2, // 消息的ID
+							// "content": `这是历史记录的第${i+1}条消息`, // 消息内容
+							"content": "该项目目前兼容ios、android、h5，[『下载android版demo』](https://github.com/wooship/uni-chatbot/releases)",
+							// "type": Math.random() > 0.5 ? 1 : 0, // 此为消息类别，设 1 为发出去的消息，0 为收到对方的消息,
+							"type": 0,
+							"pic": "/static/logo.png" // 头像
+						})
+						arr.push({
+							"id": i+1, // 消息的ID
+							// "content": `这是历史记录的第${i+1}条消息`, // 消息内容
+							"content": "这是一个开源的聊天机器人项目，项目地址：[『点我』](https://github.com/wooship/uni-chatbot)",
+							// "type": Math.random() > 0.5 ? 1 : 0, // 此为消息类别，设 1 为发出去的消息，0 为收到对方的消息,
+							"type": 0,
+							"pic": "/static/logo.png" // 头像
+						})
+						arr.push({
 							"id": i, // 消息的ID
 							// "content": `这是历史记录的第${i+1}条消息`, // 消息内容
-							"content": `欢迎，您想问些什么`,
+							"content": "今天是" + new Date().toLocaleString(),
 							// "type": Math.random() > 0.5 ? 1 : 0, // 此为消息类别，设 1 为发出去的消息，0 为收到对方的消息,
 							"type": 0,
 							"pic": "/static/logo.png" // 头像
@@ -216,9 +262,21 @@
 				// question += '}\n现在我的问题是：\n'
 				// question += this.content.trim() + '\n';
 				// console.log(question)
-				
-				let question = this.content.trim()
-
+				let prompt = "You play my personal assistant and do your best to answer my questions. " +
+					"If you don't know the answer to the question, you can search and organize the information yourself. " +
+					"Even so, if you still can't get the answer, please tell me honestly and don't talk nonsense. " +
+					"Please answer in Chinese (unless I explicitly request another language in the question). " +
+					"My question is as follows:\n"
+				let question
+				if (this.pic_base64 === '') {
+					question = prompt + this.content.trim()
+				} else {
+					let jsonq = {
+						q: prompt + this.content.trim(),
+						p: this.pic_base64
+					}
+					question = JSON.stringify(jsonq)
+				}
 				// uni.showLoading({
 				// 	title: '正在发送'
 				// })
@@ -231,43 +289,50 @@
 					})
 					.then(res => {
 						console.log(res);
-						let intervalID = setInterval(() => {
-							Promise.race([getTimeOut(4000), wx.cloud.callFunction({ //调用云服务
-									name: "getanswer", //云函数名称
-									data: {
-										q: question, //云函数需要的参数
-									},
-								})
-								.then(res => {
-									console.log(res);
-									if (res.result == 'no answer yet') {
-										// console.log('awaiting answer ...')
-									} else {
-										let data = {
-											"id": new Date().getTime(),
-											"content": res.result,
-											"type": 0,
-											"pic": "/static/logo.png"
-										}
-										this.talkList.push(data);
+						// let intervalID = setInterval((_q) => {
+						// 	let st = new Date().getTime()
+						// 	wx.cloud.callFunction({ //调用云服务
+						// 			name: "getanswer", //云函数名称
+						// 			data: {
+						// 				q: _q, //云函数需要的参数
+						// 			},
+						// 		})
+						// 		.then(res => {
+						// 			let t = new Date().getTime()
+						// 			if (t - st < 3000) {
+						// 				console.log(res);
+						// 				if (res.result == 'no answer yet') {
+						// 					// console.log('awaiting answer ...')
+						// 				} else {
+						// 					let data = {
+						// 						"id": new Date().getTime(),
+						// 						"content": res.result,
+						// 						"type": 0,
+						// 						"pic": "/static/logo.png"
+						// 					}
+						// 					this.talkList.push(data);
 
-										this.$nextTick(() => {
-											if (this.bottom === '0px') {
-												uni.pageScrollTo({
-													scrollTop: 999999, // 设置一个超大值，以保证滚动条滚动到底部
-													duration: 0
-												});
-											}
-										})
+						// 					this.$nextTick(() => {
+						// 						if (this.bottom === '0px' || this.bottom ===
+						// 							'') {
+						// 							uni.pageScrollTo({
+						// 								scrollTop: 999999, // 设置一个超大值，以保证滚动条滚动到底部
+						// 								duration: 0
+						// 							});
+						// 						}
+						// 					})
 
-										clearInterval(intervalID);
-									}
-								})
-								.catch(err => {
-									console.log('失败', res)
-								})
-							])
-						}, 5000);
+						// 					clearInterval(intervalID);
+						// 				}
+						// 			} else {
+						// 				console.log('get answer timeout :', t - st)
+						// 			}
+						// 		})
+						// 		.catch(err => {
+						// 			console.log('失败', res)
+						// 		})
+						// }, 4000, question);
+						this.getAnswerWx(question)
 					})
 					.catch(err => {
 						setTimeout(() => {
@@ -276,20 +341,20 @@
 							// 将当前发送信息 添加到消息列表。
 							let data = {
 								"id": new Date().getTime(),
-								"content": '问题发送失败，请稍后重试',
+								"content": '问题发送失败，请稍后重试：\n' + err,
 								"type": 0,
 								"pic": "/static/logo.png"
 							}
 							this.talkList.push(data);
 
-							this.$nextTick(() => {
-								if (this.bottom === '0px') {
-									uni.pageScrollTo({
-										scrollTop: 999999, // 设置一个超大值，以保证滚动条滚动到底部
-										duration: 0
-									});
-								}
-							})
+							// this.$nextTick(() => {
+							// 	if (this.bottom === '0px' || this.bottom === '') {
+							// 		uni.pageScrollTo({
+							// 			scrollTop: 999999, // 设置一个超大值，以保证滚动条滚动到底部
+							// 			duration: 0
+							// 		});
+							// 	}
+							// })
 						}, 1000);
 					})
 				/*  #endif  */
@@ -299,41 +364,49 @@
 					}, false, "POST")
 					.then(res => {
 						console.log(res);
-						let intervalID = setInterval(() => {
-							Promise.race([getTimeOut(4000), getParamsRequest("/postanswer", {
-									q: question
-								}, false, "POST")
-								.then(res => {
-									console.log(res);
-									if (res == 'no answer yet') {
-										// console.log('awaiting answer ...')
-									} else {
-										let data = {
-											"id": new Date().getTime(),
-											"content": res,
-											"type": 0,
-											"pic": "/static/logo.png"
-										}
-										this.talkList.push(data);
+						// let intervalID = setInterval((_q) => {
+						// 	let st = new Date().getTime()
+						// 	getParamsRequest("/postanswer", {
+						// 			q: _q
+						// 		}, false, "POST")
+						// 		.then(res => {
+						// 			let t = new Date().getTime()
+						// 			if (t - st < 3000) {
+						// 				console.log(res);
+						// 				if (res == 'no answer yet') {
+						// 					// console.log('awaiting answer ...')
+						// 				} else {
+						// 					let data = {
+						// 						"id": new Date().getTime(),
+						// 						"content": res,
+						// 						"type": 0,
+						// 						"pic": "/static/logo.png"
+						// 					}
+						// 					this.talkList.push(data);
 
-										this.$nextTick(() => {
-											// console.log(this.bottom)
-											if (this.bottom === '0px') {
-												uni.pageScrollTo({
-													scrollTop: 999999, // 设置一个超大值，以保证滚动条滚动到底部
-													duration: 0
-												});
-											}
-										})
+						// 					this.$nextTick(() => {
+						// 						// console.log(this.bottom)
+						// 						if (this.bottom === '0px' || this
+						// 							.bottom ===
+						// 							'') {
+						// 							uni.pageScrollTo({
+						// 								scrollTop: 999999, // 设置一个超大值，以保证滚动条滚动到底部
+						// 								duration: 0
+						// 							});
+						// 						}
+						// 					})
 
-										clearInterval(intervalID);
-									}
-								})
-								.catch(err => {
-									console.log(err);
-								})
-							])
-						}, 5000);
+						// 					clearInterval(intervalID);
+						// 				}
+						// 			} else {
+						// 				console.log('get answer timeout :', t - st)
+						// 			}
+						// 		})
+						// 		.catch(err => {
+						// 			console.log(err);
+						// 		})
+						// }, 4000, question);
+						this.getAnswer(question)
 					})
 					.catch(err => {
 						setTimeout(() => {
@@ -342,54 +415,303 @@
 							// 将当前发送信息 添加到消息列表。
 							let data = {
 								"id": new Date().getTime(),
-								"content": '问题发送失败，请稍后重试',
+								"content": '问题发送失败，请稍后重试：\n' + err,
 								"type": 0,
 								"pic": "/static/logo.png"
 							}
 							this.talkList.push(data);
 
-							this.$nextTick(() => {
-								if (this.bottom === '0px') {
-									uni.pageScrollTo({
-										scrollTop: 999999, // 设置一个超大值，以保证滚动条滚动到底部
-										duration: 0
-									});
-								}
-							})
+							// this.$nextTick(() => {
+							// 	if (this.bottom === '0px' || this.bottom === '') {
+							// 		uni.pageScrollTo({
+							// 			scrollTop: 999999, // 设置一个超大值，以保证滚动条滚动到底部
+							// 			duration: 0
+							// 		});
+							// 	}
+							// })
 						}, 1000);
 					})
 				/*  #endif  */
+
 				setTimeout(() => {
 					// uni.hideLoading();
 
 					// 将当前发送信息 添加到消息列表。
-					let data = {
-						"id": new Date().getTime(),
-						"content": this.content,
-						"type": 1,
-						"pic": "/static/question.png"
+					let data
+					if (this.pic_base64 !== '') {
+						data = {
+							"id": new Date().getTime(),
+							"content": this.content,
+							"type": 1,
+							"pic": "/static/question.png",
+							"pic_base64": this.pic_base64
+						}
+					} else {
+						data = {
+							"id": new Date().getTime(),
+							"content": this.content,
+							"type": 1,
+							"pic": "/static/question.png"
+						}
 					}
 					this.talkList.push(data);
 
 					this.$nextTick(() => {
+						this.pic_icon = 'camera' //改
+						this.pic_base64 = '' //改
 						// 清空内容框中的内容
 						this.content = '';
 						this.canClick = true
-						uni.pageScrollTo({
-							scrollTop: 999999, // 设置一个超大值，以保证滚动条滚动到底部
-							duration: 0
-						});
+						// uni.pageScrollTo({
+						// 	scrollTop: 999999, // 设置一个超大值，以保证滚动条滚动到底部
+						// 	duration: 0
+						// });
 					})
 				}, 100);
 			},
 			//input失去焦点时滚到底，为了解决虚拟键盘收回时滚动条位置不对的问题
 			blur_input() {
-				setTimeout(() => {
-					uni.pageScrollTo({
-						scrollTop: 999999, // 设置一个超大值，以保证滚动条滚动到底部
-						duration: 0
+				// setTimeout(() => {
+				// 	uni.pageScrollTo({
+				// 		scrollTop: 999999, // 设置一个超大值，以保证滚动条滚动到底部
+				// 		duration: 0
+				// 	});
+				// }, 300);
+			},
+			focus_input() {
+				// setTimeout(() => {
+				// 	uni.pageScrollTo({
+				// 		scrollTop: 999999, // 设置一个超大值，以保证滚动条滚动到底部
+				// 		duration: 0
+				// 	});
+				// }, 800);
+			},
+			touch_move() {
+				uni.hideKeyboard()
+			},
+			camera() {
+				if (this.pic_base64 !== '') {
+					this.pic_base64 = ''
+					this.pic_icon = 'camera'
+					uni.showToast({
+						title: '取消选择图片',
+						icon: 'none'
+					})
+				} else {
+					uni.chooseImage({
+						count: 1, //上传图片数量
+						sizeType: ['original', 'compressed'], //可以指定是原图还是压缩图，默认二者都有
+						sourceType: ['album', 'camera'], //album 从相册选图，camera 使用相机，默认二者都有
+						success: (chooseImageRes) => {
+							console.log('chooseImageRes', JSON.stringify(chooseImageRes));
+							// tempFilePaths 图片的本地文件路径列表
+							const tempFilePaths = chooseImageRes.tempFilePaths;
+							// console.log(tempFilePaths[0])
+							/*  #ifdef MP-WEIXIN  */
+							uni.compressImage({
+								src: tempFilePaths[0],
+								quality: 10,
+								success: (res) => {
+									console.log(JSON.stringify(res))
+									pathToBase64(res.tempFilePath).then(data => {
+										this.pic_base64 = data;
+										this.pic_icon = 'camera-filled';
+										uni.showToast({
+											title: '已选择一张图片',
+											icon: 'none'
+										})
+										// console.log(this.pic_base64);
+									})
+								}
+							})
+							/*  #endif  */
+							/*  #ifdef APP-PLUS  */
+							plus.zip.compressImage({
+								src: tempFilePaths[0],
+								dst: tempFilePaths[0],
+								width: '40%',
+								height: '40%',
+								quality: 10,
+								overwrite: true,
+							}, (event) => {
+								let newImg = event.target
+								// console.log(newImg)
+								pathToBase64(newImg).then(data => {
+									this.pic_base64 = data;
+									this.pic_icon = 'camera-filled';
+									uni.showToast({
+										title: '已选择一张图片',
+										icon: 'none'
+									})
+									// console.log(this.pic_base64);
+								})
+							}, function(err) {
+								//err
+								console.log(err)
+							})
+							/*  #endif  */
+							/*  #ifdef H5  */
+							let canvas = createCanvas();
+							let ctx = canvas.getContext("2d");
+							let targeImg = new Image();
+							targeImg.src = tempFilePaths[0];
+							uni.getImageInfo({
+								src: tempFilePaths[0],
+								success: (i) => {
+									let imgScale = imgScaleW(1024, i.width, i.height);
+									canvas.width = imgScale.width;
+									canvas.height = imgScale.height;
+									ctx.drawImage(targeImg, 0, 0, imgScale.width, imgScale.height);
+									canvas.toBlob((blob) => {
+										// console.log(blob)
+										let imgSrc = window.URL.createObjectURL(blob)
+										pathToBase64(imgSrc).then(data => {
+											// console.log(data)
+											this.pic_base64 = data;
+											this.pic_icon = 'camera-filled';
+											uni.showToast({
+												title: '已选择一张图片',
+												icon: 'none'
+											})
+										})
+									})
+								}
+							})
+							/*  #endif  */
+						}
 					});
-				}, 200);
+				}
+			},
+			// formatAnswer(answser){
+			// 	const block_regex = /^BlockReason/
+			// 	const fail_regex = /^content generation failed/
+			// 	if(block_regex.test(answser)){
+			// 		return '基于安全、隐私政策等原因，您的问题被拒绝回答...'
+			// 	}else if(fail_regex.test(answser)){
+			// 		return '服务器异常，请稍后重试...'
+			// 	}else{
+			// 		return answser
+			// 	}
+			// },
+			getAnswerWx(question) {
+				setTimeout(() => {
+					wx.cloud.callFunction({ //调用云服务
+							name: "getanswer", //云函数名称
+							data: {
+								q: question, //云函数需要的参数
+							},
+						})
+						.then(res => {
+							console.log(res);
+							if (res == 'no answer yet') {
+								// console.log('awaiting answer ...')
+								this.getAnswerWx(question)
+							} else {
+								let data = {
+									"id": new Date().getTime(),
+									"content": res,
+									"type": 0,
+									"pic": "/static/logo.png"
+								}
+								this.talkList.push(data);
+
+								// this.$nextTick(() => {
+								// 	// console.log(this.bottom)
+								// 	if (this.bottom === '0px' || this
+								// 		.bottom ===
+								// 		'') {
+								// 		uni.pageScrollTo({
+								// 			scrollTop: 999999, // 设置一个超大值，以保证滚动条滚动到底部
+								// 			duration: 0
+								// 		});
+								// 	}
+								// })
+							}
+						})
+						.catch(err => {
+							console.log(err);
+						})
+				}, 1000)
+			},
+			getAnswer(question) {
+				setTimeout(() => {
+					getParamsRequest("/postanswer", {
+							q: question
+						}, false, "POST")
+						.then(res => {
+							console.log(res);
+							if (res == 'no answer yet') {
+								// console.log('awaiting answer ...')
+								this.getAnswer(question)
+							} else {
+								let data = {
+									"id": new Date().getTime(),
+									"content": res,
+									"type": 0,
+									"pic": "/static/logo.png"
+								}
+								this.talkList.push(data);
+
+								// this.$nextTick(() => {
+								// 	// console.log(this.bottom)
+								// 	if (this.bottom === '0px' || this
+								// 		.bottom ===
+								// 		'') {
+								// 		uni.pageScrollTo({
+								// 			scrollTop: 999999, // 设置一个超大值，以保证滚动条滚动到底部
+								// 			duration: 0
+								// 		});
+								// 	}
+								// })
+							}
+						})
+						.catch(err => {
+							console.log(err);
+						})
+				}, 1000)
+			},
+			imgPreview(img) {
+				let base64Arr = [img]
+				base64Arr.reduce((promise, path) => promise.then(res => base64ToPath(path).then(base64 => (res.push(
+						base64), res))), Promise.resolve([]))
+					.then(res => {
+						// 临时url
+						// console.log(res)
+						uni.previewImage({
+							current: 0,
+							urls: res
+						});
+					})
+					.catch(error => {
+						console.error(error)
+					})
+			},
+			handleResize(event) {
+				let pb
+				uni.createSelectorQuery().select('.box-2').boundingClientRect(function(rect) {
+					pb = rect.height + uni.getSystemInfoSync().safeAreaInsets.bottom - uni.getSystemInfoSync().safeAreaInsets.bottom
+					// console.log("pb",pb)
+				}).exec();
+				setTimeout(() => {
+					this.pBottom = pb
+					console.log("pbottom", this.pBottom)
+				}, 100);
+				// alert(event)
+				/*  #ifndef  H5  */
+				// if (!(this.bottom === '0px' || this
+				// 		.bottom ===
+				// 		'')) {
+				// 	return;
+				// }
+				/*  #endif  */
+				this.$nextTick(() => {
+					setTimeout(() => {
+						uni.pageScrollTo({
+							scrollTop: 999999, // 设置一个超大值，以保证滚动条滚动到底部
+							duration: 0
+						});
+					}, 100);
+				})
 			}
 		}
 	}
@@ -431,7 +753,7 @@
 	.box-1 {
 		width: 100%;
 		height: auto;
-		padding-bottom: 100rpx;
+		// padding-bottom: 100rpx;
 		box-sizing: content-box;
 
 		/* 兼容iPhoneX，你这错了，没用还会有反效果 */
@@ -473,7 +795,7 @@
 			background-color: #448cb6;
 			color: #fff;
 			height: 64rpx;
-			margin-left: 20rpx;
+			margin-left: 10rpx;
 			border-radius: 10rpx;
 			padding: 0;
 			width: 120rpx;
@@ -482,6 +804,21 @@
 			&:active {
 				background-color: #316684;
 			}
+		}
+
+		.camera {
+			// background-color: #448cb6;
+			color: #fff;
+			height: 64rpx;
+			margin-left: 10rpx;
+			border-radius: 10rpx;
+			padding: 0;
+			width: 64rpx;
+			line-height: 62rpx;
+
+			// &:active {
+			// 	background-color: #316684;
+			// }
 		}
 	}
 
@@ -502,10 +839,28 @@
 				border: #fff solid 1px;
 			}
 
+			.pic_base64 {
+				// width: 100%;
+				min-width: 400rpx;
+
+				:hover {
+					cursor: pointer;
+				}
+
+				// height: 256rpx;
+				// max-width: 1024rpx;
+				// max-height: 1024rpx;
+				// border: #fff solid 1px;
+			}
+
+			.pic_base64_none {
+				display: none;
+			}
+
 			.content {
 				padding: 20rpx;
 				border-radius: 4px;
-				max-width: 500rpx;
+				max-width: 73%;
 				word-break: break-all;
 				line-height: 52rpx;
 				position: relative;
