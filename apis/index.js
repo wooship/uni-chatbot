@@ -22,12 +22,12 @@ export const getParamsRequest = (url, params, showLoading, method) => (
 				if (res.statusCode == 200) {
 					resolve(res.data);
 				} else {
-					reject("出错了");
+					reject("出错了 " + JSON.stringify(res));
 				}
 
 			},
 			fail: (res) => {
-				reject("出错了");
+				reject("出错了 " + JSON.stringify(res));
 			},
 			complete: () => {
 				if (showLoading) {

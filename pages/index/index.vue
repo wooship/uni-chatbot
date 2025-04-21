@@ -27,6 +27,9 @@
 						placeholder="请输入你的问题" :adjust-position="false" placeholder-style="color:#DDD;"
 						cursor-spacing="155rpx" always-embed="true" @blur="blur_input" @focus="focus_input">
 				</view>
+				<button class="camera" @tap="eye">
+					<uni-icons :type="eye_icon" size="24" />
+				</button>
 				<button class="camera" @tap="camera">
 					<uni-icons :type="pic_icon" size="24" />
 				</button>
@@ -68,7 +71,9 @@
 				canClick: true,
 				pic_icon: 'camera',
 				pic_base64: '',
-				themeColor: '#2d85b1'
+				themeColor: '#2d85b1',
+				eye_icon: 'eye',
+				eye_open: false
 			}
 		},
 		/*  #ifndef  H5  */
@@ -171,25 +176,15 @@
 					let endIndex = startIndex + this.ajax.rows;
 					for (let i = startIndex; i < endIndex; i++) {
 						arr.push({
-							"id": i+2, // 消息的ID
-							// "content": `这是历史记录的第${i+1}条消息`, // 消息内容
-							"content": "该项目目前兼容ios、android、h5，[『下载android版demo』](https://github.com/wooship/uni-chatbot/releases)",
-							// "type": Math.random() > 0.5 ? 1 : 0, // 此为消息类别，设 1 为发出去的消息，0 为收到对方的消息,
-							"type": 0,
-							"pic": "/static/logo.png" // 头像
-						})
-						arr.push({
-							"id": i+1, // 消息的ID
-							// "content": `这是历史记录的第${i+1}条消息`, // 消息内容
-							"content": "这是一个开源的聊天机器人项目，项目地址：[『点我』](https://github.com/wooship/uni-chatbot)",
-							// "type": Math.random() > 0.5 ? 1 : 0, // 此为消息类别，设 1 为发出去的消息，0 为收到对方的消息,
-							"type": 0,
-							"pic": "/static/logo.png" // 头像
-						})
-						arr.push({
 							"id": i, // 消息的ID
 							// "content": `这是历史记录的第${i+1}条消息`, // 消息内容
-							"content": "今天是" + new Date().toLocaleString(),
+							"content": /* "- 今天是" + new Date().toLocaleString() + "\n" + */
+								"- 这是一个开源的聊天机器人项目，项目地址：[『点我』](https://github.com/wooship/uni-chatbot)" + "\n" +
+								"- 新增**搜索辅助**：点击**相机小图标**左侧的**眼睛小图标**打开或关闭该功能" + "\n" +
+								"- **搜索辅助**使用搜索引擎技术为模型提供最新的互联网数据" + "\n" +
+								"- **搜索辅助**目前处于测试阶段，该功能与**图文混合输入**不可同时使用" + "\n" +
+								"- 支持**图文混合输入**：点击**发送按钮**左侧的**相机小图标**拍摄或选择一张图片" + "\n" +
+								"- 该项目目前兼容ios、android、h5，[『下载android版demo』](https://github.com/wooship/uni-chatbot/releases)",
 							// "type": Math.random() > 0.5 ? 1 : 0, // 此为消息类别，设 1 为发出去的消息，0 为收到对方的消息,
 							"type": 0,
 							"pic": "/static/logo.png" // 头像
@@ -267,16 +262,12 @@
 					"Even so, if you still can't get the answer, please tell me honestly and don't talk nonsense. " +
 					"Please answer in Chinese (unless I explicitly request another language in the question). " +
 					"My question is as follows:\n"
-				let question
-				if (this.pic_base64 === '') {
-					question = prompt + this.content.trim()
-				} else {
-					let jsonq = {
-						q: prompt + this.content.trim(),
-						p: this.pic_base64
-					}
-					question = JSON.stringify(jsonq)
+				let jsonq = {
+					q: prompt + this.content.trim(),
+					e: this.eye_open,
+					p: this.pic_base64
 				}
+				let question = JSON.stringify(jsonq)
 				// uni.showLoading({
 				// 	title: '正在发送'
 				// })
@@ -489,7 +480,38 @@
 			touch_move() {
 				uni.hideKeyboard()
 			},
+			eye() {
+				if(this.pic_base64 !== ''){
+					uni.showToast({
+						title: '要使用搜索辅助请先关闭图文混合输入',
+						icon: 'none'
+					})
+					return
+				}
+				if (this.eye_open){
+					this.eye_icon = 'eye'
+					this.eye_open = false
+					uni.showToast({
+						title: '关闭搜索辅助功能',
+						icon: 'none'
+					})
+				}else{
+					this.eye_icon = 'eye-filled'
+					this.eye_open = true
+					uni.showToast({
+						title: '打开搜索辅助功能',
+						icon: 'none'
+					})
+				}
+			},
 			camera() {
+				if(this.eye_open){
+					uni.showToast({
+						title: '要使用图文混合输入请先关闭搜索辅助',
+						icon: 'none'
+					})
+					return
+				}
 				if (this.pic_base64 !== '') {
 					this.pic_base64 = ''
 					this.pic_icon = 'camera'
@@ -689,13 +711,14 @@
 			handleResize(event) {
 				let pb
 				uni.createSelectorQuery().select('.box-2').boundingClientRect(function(rect) {
-					pb = rect.height + uni.getSystemInfoSync().safeAreaInsets.bottom - uni.getSystemInfoSync().safeAreaInsets.bottom
+					pb = rect.height + uni.getSystemInfoSync().safeAreaInsets.bottom - uni.getSystemInfoSync()
+						.safeAreaInsets.bottom
 					// console.log("pb",pb)
 				}).exec();
 				setTimeout(() => {
 					this.pBottom = pb
 					console.log("pbottom", this.pBottom)
-				}, 100);
+				}, 300);
 				// alert(event)
 				/*  #ifndef  H5  */
 				// if (!(this.bottom === '0px' || this
